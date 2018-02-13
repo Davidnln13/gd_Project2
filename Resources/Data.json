@@ -1,0 +1,28 @@
+{
+  "Images":
+  {
+      "ASTEROIDIMG": "./Resources/Images/asteroid.png",
+      "BACKGROUNDIMG": "./Resources/Images/background.png",
+      "EXPLOSIONIMGONE": "./Resources/Images/ExplosionOne.png",
+      "EXPLOSIONIMGTWO": "./Resources/Images/ExplosionTwo.png",
+      "EXPLOSIONIMGTHREE": "./Resources/Images/ExplosionThree.png",
+      "EXPLOSIONIMGFOUR": "./Resources/Images/ExplosionFour.png",
+      "EXPLOSIONIMGFIVE": "./Resources/Images/ExplosionFive.png",
+      "EXPLOSIONIMGSIX": "./Resources/Images/ExplosionSix.png",
+      "EXPLOSIONIMGSEVEN": "./Resources/Images/ExplosionSeven.png",
+      "EXPLOSIONIMGEIGHT": "./Resources/Images/ExplosionEight.png",
+      "EXPLOSIONIMGNINE": "./Resources/Images/ExplosionNine.png",
+      "EXPLOSIONIMGTEN": "./Resources/Images/ExplosionTen.png",
+      "OPTIONSSYMBOLIMG": "./Resources/Images/optionsSymbol.png",
+      "PLAYERIMG": "./Resources/Images/Player.png",
+      "PLAYERLEFTIMG": "./Resources/Images/PlayerLeft.png",
+      "PLAYERRIGHTIMG": "./Resources/Images/PlayerRight.png"
+    },
+    "Audio":
+    {
+      "BACKGROUNDMUSIC": "./Resources/Audio/Music/BackgroundMusic.mp3",
+      "MOVESOUND": "./Resources/Audio/SoundEffects/Move.mp3",
+      "EXPLOSIONSOUND": "./Resources/Audio/SoundEffects/Explosion.mp3"
+    }
+
+}
