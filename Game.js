@@ -3,10 +3,11 @@ class Game
 {
   constructor()
   {
-
+    //used for JSON loading
     this.canvas = null;
     this.dataLoaded = false;
     this.myAssets = new AssetLoader();
+    this.ws = null;
   }
     /**
   * initWorld
@@ -14,6 +15,18 @@ class Game
   */
   initWorld()
   {
+    //websocket for multiplayer
+    this.ws = new WebSocket("ws://localhost:8080/wstest");
+    this.ws.onopen = function() {
+     var message = {}
+     message.type = "test"
+     message.data = "hello"
+
+     this.ws.send(JSON.stringify(message));
+     this.messageHandler = new HandleMessage();
+
+     this.ws.addEventListener('message', this.messageHandler.handle);     
+   };
     //Music
     gameNamespace.BackgroundMusic = new Audio(gameNamespace.game.myAssets.data["Audio"]["BACKGROUNDMUSIC"]);
     //loop
@@ -21,13 +34,13 @@ class Game
     this.currentTime = 0;
     this.play();
     }, false);
-    gameNamespace.BackgroundMusic.play();
+    //gameNamespace.BackgroundMusic.play();                   /////////////////////////////////uncomment later //////////////////////////////////////
     //sounds
     gameNamespace.ExplosionSound = new Audio(gameNamespace.game.myAssets.data["Audio"]["EXPLOSIONSOUND"]);
     gameNamespace.MoveSound = new Audio(gameNamespace.game.myAssets.data["Audio"]["MOVESOUND"]);
     gameNamespace.posOne = 0;
     gameNamespace.posTwo = -880;
-    //enum
+    //enum for different game states
     gameNamespace.GamestateEnum = {
                                     MAIN:0,
                                     GAME:1,
@@ -35,13 +48,16 @@ class Game
                                     TUTORIAL:3,
                                     HIGHSCORE:4,
                                     EXIT:5,
-                                    DIFFICULTY:6
+                                    DIFFICULTY:6,
+                                    MULTIPLAYER:7
                                   }
+    //3 player positions on screen
     gameNamespace.PlayerPosEnum = {
                                   LEFT: 50,
                                   MID : 203,
                                   RIGHT : 350
     }
+    //we start at main
     gameNamespace.gamestate = gameNamespace.GamestateEnum.MAIN;
     //context
     gameNamespace.ctx;
@@ -59,10 +75,11 @@ class Game
     //Text Divs Main
     this.createDiv('Space Runner',"MAIN",110,100,true);
     this.createDiv("PLAY","GAME",110,300,true);
-    this.createDiv("OPTIONS","OPTIONS",110,350,true);
-    this.createDiv("TUTORIAL","TUTORIAL",110,400,true);
-    this.createDiv("HIGHSCORE","HIGHSCORE",110,450,true);
-    this.createDiv("EXIT","EXIT",110,500,true);
+    this.createDiv("MULTIPLAYER", "MULTIPLAYER", 110, 350, true);
+    this.createDiv("OPTIONS","OPTIONS",110,400,true);
+    this.createDiv("TUTORIAL","TUTORIAL",110,450,true);
+    this.createDiv("HIGHSCORE","HIGHSCORE",110,500,true);
+    this.createDiv("EXIT","EXIT",110,550,true);
     //swipe detection
     gameNamespace.startingPosX = -100;
     gameNamespace.startingPosY = -100;
@@ -81,19 +98,23 @@ class Game
     //play
     gameNamespace.currentPosition = gameNamespace.PlayerPosEnum.MID;
     gameNamespace.score = 0;
+    //mid
     gameNamespace.currentPositionPixels = 203;
     gameNamespace.asteroidPosY = [-50,-350,-650];
     gameNamespace.asteroidMoveSpeed = 1;
     gameNamespace.currentAsteroidMoveSpeed = 1;
     gameNamespace.explode = false;
     gameNamespace.alive = false;
+    //animating explosion
     gameNamespace.startAnimation;
     gameNamespace.stopAnimation;
+    //astroid initial spawn
     gameNamespace.asteroidRotation = [gameNamespace.game.RandomPos(),gameNamespace.game.RandomPos(),gameNamespace.game.RandomPos()];
     this.createDiv("<img src=" + gameNamespace.game.myAssets.data["Images"]["ASTEROIDIMG"] + ">", "ASTEROIDONE",gameNamespace.game.RandomPos(),-50,false);
     this.createDiv("<img src=" + gameNamespace.game.myAssets.data["Images"]["ASTEROIDIMG"] + ">", "ASTEROIDTWO",gameNamespace.game.RandomPos(),-250,false);
     this.createDiv("<img src=" + gameNamespace.game.myAssets.data["Images"]["ASTEROIDIMG"] + ">", "ASTEROIDTHREE",gameNamespace.game.RandomPos(),-450,false);
     this.createDiv("<img src=" + gameNamespace.game.myAssets.data["Images"]["OPTIONSSYMBOLIMG"] + ">","optionsSymbol",440,10,true);
+    //explosion images
     gameNamespace.listOfExplosions = ["<img src=" + gameNamespace.game.myAssets.data["Images"]["EXPLOSIONIMGONE"] + ">","<img src=" + gameNamespace.game.myAssets.data["Images"]["EXPLOSIONIMGTWO"] + ">",
                                       "<img src=" + gameNamespace.game.myAssets.data["Images"]["EXPLOSIONIMGTHREE"] + ">","<img src=" + gameNamespace.game.myAssets.data["Images"]["EXPLOSIONIMGFOUR"] + ">",
                                       "<img src=" + gameNamespace.game.myAssets.data["Images"]["EXPLOSIONIMGFIVE"] + ">","<img src=" + gameNamespace.game.myAssets.data["Images"]["EXPLOSIONIMGSIX"] + ">",
@@ -135,17 +156,20 @@ class Game
     gameNamespace.tutorialMessageNumber = 0;
     this.createDiv("Swipe left to move Left", "tutorialMessage",85,150,false);
     this.createDiv("PLAY", "tutorialPlay",200,450,true);
-
+    //MULTIPLAYER
+    this.createDiv("MAIN MENU", "multiplayerMainMenu", 110, 500, true);
+    this.createDiv("CONNECTING", "multiplayerMessage", 110, 350, false);
     //list to hold text divs on main menu
     //powerups slow time avoidcollision bullet double points
     this.createDiv("")
     gameNamespace.difficultyScreenDivs = ["difficultyEasy","difficultyMedium","difficultyHard"];
-    gameNamespace.mainMenuTextDivs = ["MAIN","GAME","OPTIONS","TUTORIAL","HIGHSCORE","EXIT"];
+    gameNamespace.mainMenuTextDivs = ["MAIN","GAME","MULTIPLAYER","OPTIONS","TUTORIAL","HIGHSCORE","EXIT"];
     gameNamespace.playGameDivs = ["optionsSymbol", "PLAYER", "PLAYSCORE", "ASTEROIDONE", "ASTEROIDTWO", "ASTEROIDTHREE","EXPLOSION"];
     gameNamespace.optionisDivs = ["optionsMain","optionsResume","optionsSound","optionsMusic"];
     gameNamespace.gameOverDivs = ["GAMEOVER","GAMERESTART","GAMEMAINMENU"];
     gameNamespace.tutorialDivs =["tutorialMessage"];
     gameNamespace.highscoreDivs = ["highscoreCurrent","highscoreOutputN","highscoreOutputD","highscoreMainMenu"];
+    gameNamespace.multiplayerTextDivs = ["multiplayerMainMenu", "multiplayerMessage"];
     //initialise visibility
     gameNamespace.flipOnce = false;
     gameNamespace.game.flipVisibility(gameNamespace.playGameDivs, false);
@@ -154,9 +178,11 @@ class Game
     gameNamespace.game.flipVisibility(gameNamespace.difficultyScreenDivs, false);
     gameNamespace.game.flipVisibility(gameNamespace.tutorialDivs, false);
     gameNamespace.game.flipVisibility(gameNamespace.highscoreDivs,false);
+    gameNamespace.game.flipVisibility(gameNamespace.multiplayerTextDivs,false);
     //font and font size of Divs main
     gameNamespace.game.divFontColourSize("MAIN","impact","white","48");
     gameNamespace.game.divFontColourSize("GAME","impact","white","38");
+    gameNamespace.game.divFontColourSize("MULTIPLAYER", "impact", "white", "38");
     gameNamespace.game.divFontColourSize("OPTIONS","impact","white","38");
     gameNamespace.game.divFontColourSize("TUTORIAL","impact","white","38");
     gameNamespace.game.divFontColourSize("HIGHSCORE","impact","white","38");
@@ -185,6 +211,9 @@ class Game
     gameNamespace.game.divFontColourSize("tutorialMessage", "impact", "white", "38");
     gameNamespace.game.divFontColourSize("tutorialPlay", "impact", "white", "38");
     document.getElementById("tutorialPlay").style.visibility = "hidden";
+    //multiplayer
+    gameNamespace.game.divFontColourSize("multiplayerMainMenu", "impact", "white", "38");
+    gameNamespace.game.divFontColourSize("multiplayerMessage", "impact", "white", "38");
   //  gameNamespace.canvas.addEventListener("touchstart", this.onTouchStart.bind(this));
     window.addEventListener("keydown", function(e)
       {
@@ -701,6 +730,7 @@ UpdateMenus()
      gameNamespace.game.flipVisibility(gameNamespace.difficultyScreenDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.highscoreDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.tutorialDivs,false);
+     gameNamespace.game.flipVisibility(gameNamespace.multiplayerTextDivs,false);
    }
  }
  //play
@@ -718,6 +748,7 @@ UpdateMenus()
      gameNamespace.game.flipVisibility(gameNamespace.difficultyScreenDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.highscoreDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.tutorialDivs,false);
+     gameNamespace.game.flipVisibility(gameNamespace.multiplayerTextDivs,false);
    }
  }
  //options
@@ -732,7 +763,8 @@ UpdateMenus()
      gameNamespace.game.flipVisibility(gameNamespace.gameOverDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.difficultyScreenDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.highscoreDivs,false);
-          gameNamespace.game.flipVisibility(gameNamespace.tutorialDivs,false);
+     gameNamespace.game.flipVisibility(gameNamespace.tutorialDivs,false);
+     gameNamespace.game.flipVisibility(gameNamespace.multiplayerTextDivs,false);
    }
  }
  //tutorial
@@ -749,6 +781,7 @@ UpdateMenus()
      gameNamespace.game.flipVisibility(gameNamespace.difficultyScreenDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.highscoreDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.tutorialDivs,true);
+     gameNamespace.game.flipVisibility(gameNamespace.multiplayerTextDivs,false);
      document.getElementById("PLAYER").style.visibility = "visible";
    }
  }
@@ -765,6 +798,7 @@ UpdateMenus()
      gameNamespace.game.flipVisibility(gameNamespace.difficultyScreenDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.highscoreDivs,true);
      gameNamespace.game.flipVisibility(gameNamespace.tutorialDivs,false);
+     gameNamespace.game.flipVisibility(gameNamespace.multiplayerTextDivs,false);
    }
  }
  //difficulty
@@ -773,11 +807,29 @@ UpdateMenus()
    if(gameNamespace.flipOnce === false)
    {
      gameNamespace.flipOnce = true;
+     gameNamespace.game.flipVisibility(gameNamespace.multiplayerTextDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.mainMenuTextDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.playGameDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.optionisDivs, false);
      gameNamespace.game.flipVisibility(gameNamespace.gameOverDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.difficultyScreenDivs,true);
+     gameNamespace.game.flipVisibility(gameNamespace.highscoreDivs,false);
+     gameNamespace.game.flipVisibility(gameNamespace.tutorialDivs,false);
+   }
+ }
+ //MULTIPLAYER
+ if(gameNamespace.gamestate === 7)
+ {
+   if(gameNamespace.flipOnce === false)
+   {
+     gameNamespace.game.Reset();
+     gameNamespace.flipOnce = true;
+     gameNamespace.game.flipVisibility(gameNamespace.multiplayerTextDivs,true);
+     gameNamespace.game.flipVisibility(gameNamespace.mainMenuTextDivs,false);
+     gameNamespace.game.flipVisibility(gameNamespace.playGameDivs,false);
+     gameNamespace.game.flipVisibility(gameNamespace.optionisDivs, false);
+     gameNamespace.game.flipVisibility(gameNamespace.gameOverDivs,false);
+     gameNamespace.game.flipVisibility(gameNamespace.difficultyScreenDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.highscoreDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.tutorialDivs,false);
    }
@@ -809,6 +861,10 @@ onTouchStart(id,e)
     {
       gameNamespace.gamestate = gameNamespace.GamestateEnum.TUTORIAL;
     }
+    if("MULTIPLAYER" === id)
+    {
+      gameNamespace.gamestate = gameNamespace.GamestateEnum.MULTIPLAYER;
+    }
     if("HIGHSCORE" === id)
     {
       if(gameNamespace.currentHighestDifficulty === "EASY")
@@ -838,7 +894,7 @@ onTouchStart(id,e)
     {
       gameNamespace.gamestate = gameNamespace.GamestateEnum.OPTIONS;
     }
-    if("optionsMain" === id || "GAMEMAINMENU" === id)
+    if("optionsMain" === id || "GAMEMAINMENU" === id || "multiplayerMainMenu" === id)
     {
       gameNamespace.gamestate = gameNamespace.GamestateEnum.MAIN;
     }
