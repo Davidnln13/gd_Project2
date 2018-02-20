@@ -15,18 +15,16 @@ class Game
   */
   initWorld()
   {
-    //websocket for multiplayer
-    this.ws = new WebSocket("ws://localhost:8080/wstest");
-    this.ws.onopen = function() {
+  //  websocket for multiplayer
+     this.ws = new WebSocket("ws://localhost:8080/wstest");
+     this.ws.onopen = function() {
      var message = {}
      message.type = "test"
      message.data = "hello"
-
+     };
      this.ws.send(JSON.stringify(message));
      this.messageHandler = new HandleMessage();
-
-     this.ws.addEventListener('message', this.messageHandler.handle);     
-   };
+     gameNamespace.ws.addEventListener('message', this.messageHandler.handle);
     //Music
     gameNamespace.BackgroundMusic = new Audio(gameNamespace.game.myAssets.data["Audio"]["BACKGROUNDMUSIC"]);
     //loop
@@ -158,7 +156,7 @@ class Game
     this.createDiv("PLAY", "tutorialPlay",200,450,true);
     //MULTIPLAYER
     this.createDiv("MAIN MENU", "multiplayerMainMenu", 110, 500, true);
-    this.createDiv("CONNECTING", "multiplayerMessage", 110, 350, false);
+    this.createDiv("JOIN", "multiplayerMessage", 110, 350, true);
     //list to hold text divs on main menu
     //powerups slow time avoidcollision bullet double points
     this.createDiv("")
@@ -951,6 +949,10 @@ onTouchStart(id,e)
       document.getElementById("difficultyHard").style.color = "green";
       gameNamespace.currentAsteroidMoveSpeed = 3;
       gameNamespace.gamestate = gameNamespace.GamestateEnum.GAME;
+    }
+    if("multiplayerMessage" === id)
+    {
+      
     }
     if("GAMERESTART" === id)
     {

@@ -27,6 +27,8 @@ class WSHandler(tornado.websocket.WebSocketHandler):
             self.join()
         elif msg["type"] == "gameOver":
             self.gameOver()
+        elif msg["type"] == "gameStart":
+            
 
     def on_close(self):
         pass
@@ -41,6 +43,8 @@ class WSHandler(tornado.websocket.WebSocketHandler):
             session[self.get_player_address()] = self
             game_state = GAME_IN_PROGRESS
             self.write_message(self.format_message("GameState", str(game_state)))
+            if len(session) == 2:
+                self.write_message("GameStart")
         elif len(session) == 2:
             self.write_message("Error game full")
 
