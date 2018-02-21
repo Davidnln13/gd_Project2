@@ -5,10 +5,13 @@ class HandleMessage
       try
       {
         var message = JSON.parse(evt.data)
-        if ( message["type"] === "updateState")
+        if ( message["type"] === "GameStart")
         {
-          gameNs.otherPlayer.updateFromNet(message["data"].x, message["data"].y);
-          gameNs.game.updateLocalState(message["data"]);
+          gameNamespace.multiplayerGameStarted = true;
+        }
+        if(message["type"] === "Dead")
+        {
+          gameNamespace.haveReceivedMessage = true;
         }
         console.log(evt.data);
       }

@@ -15,16 +15,20 @@ class Game
   */
   initWorld()
   {
+     gameNamespace.isMultiplayer = false;
+     gameNamespace.multiplayerGameStarted = false;
+     gameNamespace.haveReceivedMessage = false;
+
   //  websocket for multiplayer
-     this.ws = new WebSocket("ws://localhost:8080/wstest");
-     this.ws.onopen = function() {
+     gameNamespace.ws = new WebSocket("ws://localhost:8080/wstest");
+     gameNamespace.ws.onopen = function() {
      var message = {}
      message.type = "test"
      message.data = "hello"
+     gameNamespace.ws.send(JSON.stringify(message));
      };
-     this.ws.send(JSON.stringify(message));
-     this.messageHandler = new HandleMessage();
-     gameNamespace.ws.addEventListener('message', this.messageHandler.handle);
+     gameNamespace.messageHandler = new HandleMessage();
+     gameNamespace.ws.addEventListener('message', gameNamespace.messageHandler.handle);
     //Music
     gameNamespace.BackgroundMusic = new Audio(gameNamespace.game.myAssets.data["Audio"]["BACKGROUNDMUSIC"]);
     //loop
@@ -32,7 +36,7 @@ class Game
     this.currentTime = 0;
     this.play();
     }, false);
-    //gameNamespace.BackgroundMusic.play();                   /////////////////////////////////uncomment later //////////////////////////////////////
+    gameNamespace.BackgroundMusic.play();
     //sounds
     gameNamespace.ExplosionSound = new Audio(gameNamespace.game.myAssets.data["Audio"]["EXPLOSIONSOUND"]);
     gameNamespace.MoveSound = new Audio(gameNamespace.game.myAssets.data["Audio"]["MOVESOUND"]);
@@ -157,6 +161,7 @@ class Game
     //MULTIPLAYER
     this.createDiv("MAIN MENU", "multiplayerMainMenu", 110, 500, true);
     this.createDiv("JOIN", "multiplayerMessage", 110, 350, true);
+    this.createDiv("", "WINNERLOSER", 110, 200, false);
     //list to hold text divs on main menu
     //powerups slow time avoidcollision bullet double points
     this.createDiv("")
@@ -212,6 +217,8 @@ class Game
     //multiplayer
     gameNamespace.game.divFontColourSize("multiplayerMainMenu", "impact", "white", "38");
     gameNamespace.game.divFontColourSize("multiplayerMessage", "impact", "white", "38");
+    gameNamespace.game.divFontColourSize("WINNERLOSER", "impact", "white", "72");
+
   //  gameNamespace.canvas.addEventListener("touchstart", this.onTouchStart.bind(this));
     window.addEventListener("keydown", function(e)
       {
@@ -229,7 +236,245 @@ class Game
  */
  update()
  {
+   //console.log(gameNamespace.multiplayerGameStarted);
    //resets background
+   gameNamespace.game.updateBackgroundScreen();
+   //draws to screen
+   gameNamespace.game.draw();
+   //update menus
+   gameNamespace.game.UpdateMenus();
+   //if in tutorial
+   if(gameNamespace.gamestate === 3)
+   {
+     gameNamespace.game.playTutorial();
+   }
+   //if were in the play gamestate
+   if(gameNamespace.gamestate === 1)
+   {
+     gameNamespace.game.playGame();
+   }
+   if(gameNamespace.gamestate === 7 && gameNamespace.multiplayerGameStarted === true)
+   {
+     gameNamespace.game.playMultiplayer();
+   }
+
+   //recursively calls update of game : this method
+   window.requestAnimationFrame(gameNamespace.game.update);
+ }
+ playMultiplayer()
+ {
+   if(gameNamespace.alive === true)
+   {
+     document.getElementById("multiplayerMessage").style.visibility = "hidden";
+     document.getElementById("multiplayerMainMenu").style.visibility = "hidden";
+   }
+   else
+   {
+     document.getElementById("WINNERLOSER").style.visibility = "visible";
+     if(gameNamespace.haveReceivedMessage === true)
+     {
+        document.getElementById("WINNERLOSER").style.color = "green";
+        document.getElementById("WINNERLOSER").innerHTML = "WINNER!";
+     }
+     else {
+       gameNamespace.message = {}
+       gameNamespace.message.type = "dead";
+       gameNamespace.ws.send(JSON.stringify(gameNamespace.message));
+       document.getElementById("WINNERLOSER").style.color = "red";
+       document.getElementById("WINNERLOSER").innerHTML = "LOSER!";
+     }
+
+
+     document.getElementById("multiplayerMainMenu").style.visibility = "visible";
+   }
+   if(gameNamespace.flipOnce === false)
+   {
+     document.getElementById("PLAYER").style.visibility = "visible";
+     gameNamespace.flipOnce = true;
+      document.getElementById("optionsResume").innerHTML = "RESUME";
+     gameNamespace.game.flipVisibility(gameNamespace.playGameDivs,true);
+   }
+   gameNamespace.game.updateScore();
+   if(gameNamespace.explode === true)
+   {
+     gameNamespace.game.explode();
+   }
+   gameNamespace.game.CheckCollisions();
+   gameNamespace.game.UpdateAsteroids();
+
+   if(gameNamespace.alive === true)
+      gameNamespace.score +=0.1;
+   document.getElementById("PLAYSCORE").innerHTML = "Score: " + parseInt(gameNamespace.score);
+   gameNamespace.game.checkPositions();
+ }
+ playGame()
+ {
+     gameNamespace.game.updateScore();
+
+     if(gameNamespace.alive === false)
+     {
+       gameNamespace.game.flipVisibility(gameNamespace.gameOverDivs);
+     }
+     if(gameNamespace.explode === true)
+     {
+       gameNamespace.game.explode();
+     }
+     gameNamespace.game.CheckCollisions();
+     gameNamespace.game.UpdateAsteroids();
+
+     if(gameNamespace.alive === true)
+        gameNamespace.score +=0.1;
+     document.getElementById("PLAYSCORE").innerHTML = "Score: " + parseInt(gameNamespace.score);
+    // console.log(document.getElementById("PLAYER").width());
+     gameNamespace.game.checkPositions();
+ }
+ explode()
+ {
+   document.getElementById("optionsSymbol").style.visibility = "hidden";
+   if(parseInt(gameNamespace.score) > gameNamespace.currentHighest)
+   {
+     gameNamespace.currentHighest = parseInt(gameNamespace.score);
+     document.getElementById("highscoreOutputN").innerHTML = "Score: " + parseInt(gameNamespace.score);
+     if(document.getElementById("difficultyEasy").style.color === "green")
+     {
+       document.getElementById("highscoreOutputD").innerHTML = "Difficulty: EASY";
+       gameNamespace.currentHighestDifficulty = "EASY";
+     }
+     if(document.getElementById("difficultyMedium").style.color === "green")
+     {
+        document.getElementById("highscoreOutputD").innerHTML ="Difficulty: Medium";
+        gameNamespace.currentHighestDifficulty = "MEDIUM";
+     }
+     if(document.getElementById("difficultyHard").style.color === "green")
+     {
+       document.getElementById("highscoreOutputD").innerHTML ="Difficulty: HARD";
+       gameNamespace.currentHighestDifficulty = "HARD";
+     }
+   }
+   if(document.getElementById("EXPLOSION").style.left === -250 + 'px')
+   {
+     if(document.getElementById("optionsSound").style.color === "green")
+     {
+        gameNamespace.ExplosionSound.play();
+     }
+     gameNamespace.startAnimation = new Date();
+   }
+   gameNamespace.stopAnimation = new Date();
+   var temp = gameNamespace.currentPosition + 'px';
+   document.getElementById("EXPLOSION").style.left = temp;
+   document.getElementById("EXPLOSION").style.top = 720 + 'px';
+   if(gameNamespace.stopAnimation - gameNamespace.startAnimation > 40)
+   {
+     gameNamespace.startAnimation = new Date();
+     gameNamespace.explosionCurrentIndex++;
+   }
+   document.getElementById("EXPLOSION").innerHTML = gameNamespace.listOfExplosions[gameNamespace.explosionCurrentIndex];
+   if(gameNamespace.explosionCurrentIndex >= 10)
+   {
+     document.getElementById("EXPLOSION").style.left = -250 + 'px';
+     document.getElementById("EXPLOSION").style.top = -250 + 'px';
+     gameNamespace.explosionCurrentIndex = 0;
+     gameNamespace.explode = false;
+   }
+ }
+ checkPositions()
+ {
+   if(gameNamespace.movingLeft === true)
+   {
+     if(gameNamespace.gamestate === 3 && gameNamespace.tutorialMessageNumber === 0)
+     {
+       document.getElementById("tutorialMessage").style.left = 60 + "px";
+       document.getElementById("tutorialMessage").innerHTML = "Swipe right to move right";
+       gameNamespace.tutorialMessageNumber =1;
+     }
+        //if were already left
+       if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.LEFT)
+       {
+         gameNamespace.movingLeft = false;
+       }
+       //if were mid
+       if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.MID)
+       {
+         //move from mid to left
+         gameNamespace.game.MoveLeft(gameNamespace.PlayerPosEnum.MID,gameNamespace.PlayerPosEnum.LEFT);
+       }
+       if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.RIGHT)
+       {
+         //move from right to mid
+         gameNamespace.game.MoveLeft(gameNamespace.PlayerPosEnum.RIGHT,gameNamespace.PlayerPosEnum.MID);
+       }
+   }
+   //if were moving right
+   if(gameNamespace.movingRight === true)
+   {
+     if(gameNamespace.gamestate === 3 && gameNamespace.tutorialMessageNumber === 1)
+     {
+      document.getElementById("tutorialMessage").style.left = 120 + "px";
+       document.getElementById("tutorialMessage").innerHTML = "Dodge Asteroids";
+       gameNamespace.tutorialMessageNumber =2;
+     }
+        //if were left
+       if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.LEFT)
+       {
+         //move from left to MID
+         gameNamespace.game.MoveRight(gameNamespace.PlayerPosEnum.LEFT,gameNamespace.PlayerPosEnum.MID);
+       }
+       //if were mid
+       if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.MID)
+       {
+         //move from mid to Right
+         gameNamespace.game.MoveRight(gameNamespace.PlayerPosEnum.MID,gameNamespace.PlayerPosEnum.RIGHT);
+       }
+       //if were already right
+       if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.RIGHT)
+       {
+         gameNamespace.movingRight = false;
+       }
+   }
+ }
+ updateScore()
+ {
+   //scalable difficulty
+   if(gameNamespace.score > 50)
+   {
+     if(gameNamespace.asteroidMoveSpeed < gameNamespace.currentAsteroidMoveSpeed + 1)
+     {
+       gameNamespace.asteroidMoveSpeed += 0.1;
+     }
+   }
+   if(gameNamespace.score > 100)
+   {
+     if(gameNamespace.asteroidMoveSpeed < gameNamespace.currentAsteroidMoveSpeed + 2)
+     {
+       gameNamespace.asteroidMoveSpeed += 0.1;
+     }
+   }
+   if(gameNamespace.score > 150)
+   {
+     if(gameNamespace.asteroidMoveSpeed < gameNamespace.currentAsteroidMoveSpeed + 3)
+     {
+       gameNamespace.asteroidMoveSpeed += 0.1;
+     }
+   }
+   if(gameNamespace.score <= 50)
+   {
+     gameNamespace.asteroidMoveSpeed = gameNamespace.currentAsteroidMoveSpeed;
+   }
+ }
+ playTutorial()
+ {
+   if(gameNamespace.alive === false)
+   {
+      gameNamespace.game.flipVisibility(gameNamespace.gameOverDivs);
+   }
+   gameNamespace.game.checkPositions();
+   if(gameNamespace.tutorialMessageNumber === 2)
+   {
+      document.getElementById("tutorialPlay").style.visibility = "visible";
+   }
+ }
+ updateBackgroundScreen()
+ {
    if(gameNamespace.posOne > 880)
    {
      gameNamespace.posOne = 0-880;
@@ -244,213 +489,28 @@ class Game
 
    gameNamespace.posTwo++;
    document.getElementById("backgroundTwoDiv").style.top = gameNamespace.posTwo + 'px';
-   gameNamespace.game.draw();
-   //update menus
-   gameNamespace.game.UpdateMenus();
-   //if in tutorial
-   if(gameNamespace.gamestate === 3)
-   {
-     if(gameNamespace.alive === false)
-     {
-        gameNamespace.game.flipVisibility(gameNamespace.gameOverDivs);
-     }
-     if(gameNamespace.movingLeft === true)
-     {
-       if(gameNamespace.tutorialMessageNumber === 0)
-       {
-         document.getElementById("tutorialMessage").style.left = 60 + "px";
-         document.getElementById("tutorialMessage").innerHTML = "Swipe right to move right";
-         gameNamespace.tutorialMessageNumber =1;
-       }
-          //if were already left
-         if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.LEFT)
-         {
-           gameNamespace.movingLeft = false;
-         }
-         //if were mid
-         if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.MID)
-         {
-           //move from mid to left
-           gameNamespace.game.MoveLeft(gameNamespace.PlayerPosEnum.MID,gameNamespace.PlayerPosEnum.LEFT);
-         }
-         if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.RIGHT)
-         {
-           //move from right to mid
-           gameNamespace.game.MoveLeft(gameNamespace.PlayerPosEnum.RIGHT,gameNamespace.PlayerPosEnum.MID);
-         }
-     }
-     //if were moving right
-     if(gameNamespace.movingRight === true)
-     {
-       if(gameNamespace.tutorialMessageNumber === 1)
-       {
-        document.getElementById("tutorialMessage").style.left = 120 + "px";
-         document.getElementById("tutorialMessage").innerHTML = "Dodge Asteroids";
-         gameNamespace.tutorialMessageNumber =2;
-       }
-          //if were left
-         if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.LEFT)
-         {
-           //move from left to MID
-           gameNamespace.game.MoveRight(gameNamespace.PlayerPosEnum.LEFT,gameNamespace.PlayerPosEnum.MID);
-         }
-         //if were mid
-         if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.MID)
-         {
-           //move from mid to Right
-           gameNamespace.game.MoveRight(gameNamespace.PlayerPosEnum.MID,gameNamespace.PlayerPosEnum.RIGHT);
-         }
-         //if were already right
-         if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.RIGHT)
-         {
-           gameNamespace.movingRight = false;
-         }
-     }
-     if(gameNamespace.tutorialMessageNumber === 2)
-     {
-        document.getElementById("tutorialPlay").style.visibility = "visible";
-     }
-   }
-   //if were in the play gamestate
-   if(gameNamespace.gamestate === 1)
-   {
-     //shielded
-     // document.getElementById("PLAYER").style.opacity = "0.5";
-
-     //scalable difficulty
-     if(gameNamespace.score > 50)
-     {
-       if(gameNamespace.asteroidMoveSpeed < gameNamespace.currentAsteroidMoveSpeed + 1)
-       {
-         gameNamespace.asteroidMoveSpeed += 0.1;
-       }
-     }
-     if(gameNamespace.score > 100)
-     {
-       if(gameNamespace.asteroidMoveSpeed < gameNamespace.currentAsteroidMoveSpeed + 2)
-       {
-         gameNamespace.asteroidMoveSpeed += 0.1;
-       }
-     }
-     if(gameNamespace.score > 150)
-     {
-       if(gameNamespace.asteroidMoveSpeed < gameNamespace.currentAsteroidMoveSpeed + 3)
-       {
-         gameNamespace.asteroidMoveSpeed += 0.1;
-       }
-     }
-     if(gameNamespace.score <= 50)
-     {
-       gameNamespace.asteroidMoveSpeed = gameNamespace.currentAsteroidMoveSpeed;
-     }
-
-     if(gameNamespace.alive === false)
-     {
-       gameNamespace.game.flipVisibility(gameNamespace.gameOverDivs);
-     }
-     if(gameNamespace.explode === true)
-     {
-       document.getElementById("optionsSymbol").style.visibility = "hidden";
-       if(parseInt(gameNamespace.score) > gameNamespace.currentHighest)
-       {
-         gameNamespace.currentHighest = parseInt(gameNamespace.score);
-         document.getElementById("highscoreOutputN").innerHTML = "Score: " + parseInt(gameNamespace.score);
-         if(document.getElementById("difficultyEasy").style.color === "green")
-         {
-           document.getElementById("highscoreOutputD").innerHTML = "Difficulty: EASY";
-           gameNamespace.currentHighestDifficulty = "EASY";
-         }
-         if(document.getElementById("difficultyMedium").style.color === "green")
-         {
-            document.getElementById("highscoreOutputD").innerHTML ="Difficulty: Medium";
-            gameNamespace.currentHighestDifficulty = "MEDIUM";
-         }
-         if(document.getElementById("difficultyHard").style.color === "green")
-         {
-           document.getElementById("highscoreOutputD").innerHTML ="Difficulty: HARD";
-           gameNamespace.currentHighestDifficulty = "HARD";
-         }
-       }
-       if(document.getElementById("EXPLOSION").style.left === -250 + 'px')
-       {
-         if(document.getElementById("optionsSound").style.color === "green")
-         {
-            gameNamespace.ExplosionSound.play();
-         }
-         gameNamespace.startAnimation = new Date();
-       }
-       gameNamespace.stopAnimation = new Date();
-       var temp = gameNamespace.currentPosition + 'px';
-       document.getElementById("EXPLOSION").style.left = temp;
-       document.getElementById("EXPLOSION").style.top = 720 + 'px';
-       if(gameNamespace.stopAnimation - gameNamespace.startAnimation > 40)
-       {
-         gameNamespace.startAnimation = new Date();
-         gameNamespace.explosionCurrentIndex++;
-       }
-       document.getElementById("EXPLOSION").innerHTML = gameNamespace.listOfExplosions[gameNamespace.explosionCurrentIndex];
-       if(gameNamespace.explosionCurrentIndex >= 10)
-       {
-         document.getElementById("EXPLOSION").style.left = -250 + 'px';
-         document.getElementById("EXPLOSION").style.top = -250 + 'px';
-         gameNamespace.explosionCurrentIndex = 0;
-         gameNamespace.explode = false;
-       }
-
-     }
-     gameNamespace.game.CheckCollisions();
-     gameNamespace.game.UpdateAsteroids();
-     if(gameNamespace.alive === true)
-        gameNamespace.score +=0.1;
-     document.getElementById("PLAYSCORE").innerHTML = "Score: " + parseInt(gameNamespace.score);
-    // console.log(document.getElementById("PLAYER").width());
-     //if were moving left
-     if(gameNamespace.movingLeft === true)
-     {
-          //if were already left
-         if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.LEFT)
-         {
-           gameNamespace.movingLeft = false;
-         }
-         //if were mid
-         if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.MID)
-         {
-           //move from mid to left
-           gameNamespace.game.MoveLeft(gameNamespace.PlayerPosEnum.MID,gameNamespace.PlayerPosEnum.LEFT);
-         }
-         if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.RIGHT)
-         {
-           //move from right to mid
-           gameNamespace.game.MoveLeft(gameNamespace.PlayerPosEnum.RIGHT,gameNamespace.PlayerPosEnum.MID);
-         }
-     }
-     //if were moving right
-     if(gameNamespace.movingRight === true)
-     {
-          //if were left
-         if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.LEFT)
-         {
-           //move from left to MID
-           gameNamespace.game.MoveRight(gameNamespace.PlayerPosEnum.LEFT,gameNamespace.PlayerPosEnum.MID);
-         }
-         //if were mid
-         if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.MID)
-         {
-           //move from mid to Right
-           gameNamespace.game.MoveRight(gameNamespace.PlayerPosEnum.MID,gameNamespace.PlayerPosEnum.RIGHT);
-         }
-         //if were already right
-         if(gameNamespace.currentPosition === gameNamespace.PlayerPosEnum.RIGHT)
-         {
-           gameNamespace.movingRight = false;
-         }
-   }
  }
-   //recursively calls update of game : this method
-   window.requestAnimationFrame(gameNamespace.game.update);
- }
+ updateState(ws, e)
+{
+  var posX = gameNs.player.x;
+  var posY = gameNs.player.y;
+
+
+  var updateStateObject = {};
+  updateStateObject.type = "updateState";
+  updateStateObject.data = {x:posX, y:posY}
+
+  if(gameNs.ws.readyState === WebSocket.OPEN)
+    gameNs.ws.send(JSON.stringify(updateStateObject))
+}
+
+updateLocalState(data)
+{
+  console.log(data.x + ',' + data.y);
+}
  Reset()
  {
+   gameNamespace.haveReceivedMessage = false;
   document.getElementById("optionsSymbol").style.visibility = "visible";
   document.getElementById("optionsResume").innerHTML = "PLAY";
   gameNamespace.alive = false;
@@ -656,7 +716,7 @@ divFontColourSize(name,font,colour,size)
 canvasStart(e)
 {
   e.preventDefault();
-  if(gameNamespace.gamestate === 1 || gameNamespace.gamestate === 3)
+  if(gameNamespace.gamestate === 1 || gameNamespace.gamestate === 3 || gameNamespace.multiplayerGameStarted === true)
   {
     var touches = e.touches;
     gameNamespace.startingPosX = touches[0].clientX;
@@ -666,7 +726,7 @@ canvasStart(e)
 }
 canvasMove(e)
 {
-  if(gameNamespace.gamestate === 1|| gameNamespace.gamestate === 3)
+  if(gameNamespace.gamestate === 1|| gameNamespace.gamestate === 3 || gameNamespace.multiplayerGameStarted === true)
   {
     e.preventDefault();
     var touches = e.touches;
@@ -677,7 +737,7 @@ canvasMove(e)
 canvasEnd(e)
 {
   e.preventDefault();
-  if((gameNamespace.gamestate === 1 || gameNamespace.gamestate === 3) &&gameNamespace.endingPosX !== -100)
+  if((gameNamespace.gamestate === 1 || gameNamespace.gamestate === 3 || gameNamespace.multiplayerGameStarted === true) &&gameNamespace.endingPosX !== -100)
   {
     gameNamespace.endingTime = new Date();
     gameNamespace.swipeLength = Math.sqrt((
@@ -820,8 +880,8 @@ UpdateMenus()
  {
    if(gameNamespace.flipOnce === false)
    {
-     gameNamespace.game.Reset();
-     gameNamespace.flipOnce = true;
+     gameNamespace.alive = true;
+    // gameNamespace.flipOnce = true;
      gameNamespace.game.flipVisibility(gameNamespace.multiplayerTextDivs,true);
      gameNamespace.game.flipVisibility(gameNamespace.mainMenuTextDivs,false);
      gameNamespace.game.flipVisibility(gameNamespace.playGameDivs,false);
@@ -861,6 +921,7 @@ onTouchStart(id,e)
     }
     if("MULTIPLAYER" === id)
     {
+      gameNamespace.isMultiplayer = true;
       gameNamespace.gamestate = gameNamespace.GamestateEnum.MULTIPLAYER;
     }
     if("HIGHSCORE" === id)
@@ -894,6 +955,17 @@ onTouchStart(id,e)
     }
     if("optionsMain" === id || "GAMEMAINMENU" === id || "multiplayerMainMenu" === id)
     {
+      if("multiplayerMainMenu" === id)
+      {
+        document.getElementById("WINNERLOSER").style.visibility = "hidden";
+        gameNamespace.isMultiplayer = false;
+        gameNamespace.game.Reset();
+        gameNamespace.multiplayerGameStarted = false;
+        document.getElementById("multiplayerMessage").style.color = "white";
+        gameNamespace.message = {}
+        gameNamespace.message.type = "gameOver";
+        gameNamespace.ws.send(JSON.stringify(gameNamespace.message));
+      }
       gameNamespace.gamestate = gameNamespace.GamestateEnum.MAIN;
     }
     if("optionsResume" === id)
@@ -952,7 +1024,11 @@ onTouchStart(id,e)
     }
     if("multiplayerMessage" === id)
     {
-      
+      gameNamespace.currentAsteroidMoveSpeed = 3;
+      document.getElementById("multiplayerMessage").style.color = "green";
+      gameNamespace.message={}
+      gameNamespace.message.type = "join"
+      gameNamespace.ws.send(JSON.stringify(gameNamespace.message));
     }
     if("GAMERESTART" === id)
     {

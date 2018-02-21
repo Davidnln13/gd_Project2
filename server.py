@@ -20,15 +20,15 @@ class WSHandler(tornado.websocket.WebSocketHandler):
 
     def on_message(self, message):
         msg = json.loads(message)
-        if msg['type'] == "updateState":
-        #if "updateState" in msg.values():
-            self.send_to_other_player(message)
-        elif msg["type"] == "join":
+        if msg["type"] == "join":
             self.join()
         elif msg["type"] == "gameOver":
             self.gameOver()
-        elif msg["type"] == "gameStart":
-            
+        elif msg["type"] == "dead":
+            self.dead()
+
+    def dead(self):
+        self.send_to_other_player(self.format_message("Dead", str(game_state)))
 
     def on_close(self):
         pass
@@ -38,13 +38,15 @@ class WSHandler(tornado.websocket.WebSocketHandler):
             game_state = WAITING_FOR_PLAYERS
             session.clear()
 
+
     def join(self):
         if len(session) < 2:
             session[self.get_player_address()] = self
             game_state = GAME_IN_PROGRESS
             self.write_message(self.format_message("GameState", str(game_state)))
             if len(session) == 2:
-                self.write_message("GameStart")
+                self.write_message(self.format_message("GameStart", str(game_state)))
+                self.send_to_other_player(self.format_message("GameStart", str(game_state)))
         elif len(session) == 2:
             self.write_message("Error game full")
 
